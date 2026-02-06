@@ -11,7 +11,7 @@ if (!class_exists('MGInfo')) :
 		public $ip_header_option = 'bvmgipheader';
 		public $brand_option = 'bvmgbrand';
 		public $wp_lp_whitelabel_option = 'mgLpWhitelabelConf';
-		public $version = '5.88';
+		public $version = '6.28';
 		public $webpage = 'https://www.migrateguru.com';
 		public $appurl = 'https://mg.blogvault.net';
 		public $slug = 'migrate-guru/migrateguru.php';
@@ -92,21 +92,6 @@ if (!class_exists('MGInfo')) :
 			return BV_REQUEST_ID;
 		}
 
-		public function canSetCWBranding() {
-			if (MGWPSiteInfo::isCWServer()) {
-
-				$bot_protect_accounts = MGAccount::accountsByType($this->settings, 'botprotect');
-				if (sizeof($bot_protect_accounts) >= 1)
-					return true;
-
-				$bot_protect_accounts = MGAccount::accountsByPattern($this->settings, 'email', '/@cw_user\.com$/');
-				if (sizeof($bot_protect_accounts) >= 1)
-					return true;
-			}
-
-			return false;
-		}
-
 		public function canWhiteLabel($slug = NULL) {
 			// phpcs:disable WordPress.Security.NonceVerification.Recommended
 			if (array_key_exists("bv_override_global_whitelabel", $_REQUEST)) {
@@ -162,7 +147,6 @@ if (!class_exists('MGInfo')) :
 			if (is_array($brand) && array_key_exists('menuname', $brand)) {
 				return $brand['menuname'];
 			}
-		  
 			return $this->brandname;
 		}
 

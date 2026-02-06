@@ -1,11 +1,11 @@
 <?php
 /*
-Plugin Name: Migrate Guru
+Plugin Name: Migrate Guru – Site Migration & Cloning
 Plugin URI: https://www.migrateguru.com
 Description: Migrating your site(s) to any WordPress Hosting platform has never been so easy.
 Author: Migrate Guru
 Author URI: http://www.migrateguru.com
-Version: 5.88
+Version: 6.28
 Network: True
 License: GPLv2 or later
 License URI: [http://www.gnu.org/licenses/gpl-2.0.html](http://www.gnu.org/licenses/gpl-2.0.html)
@@ -40,6 +40,7 @@ require_once dirname( __FILE__ ) . '/wp_actions.php';
 require_once dirname( __FILE__ ) . '/info.php';
 require_once dirname( __FILE__ ) . '/account.php';
 require_once dirname( __FILE__ ) . '/helper.php';
+require_once dirname( __FILE__ ) . '/wp_file_system.php';
 ##WP_2FA_REQUIRE_FILE##
 ##WP_LOGIN_WHITELABEL_REQUIRE_FILE##
 ##WPCACHEMODULE##
@@ -86,6 +87,10 @@ if (is_admin()) {
 	}
 	add_filter('plugin_action_links', array($wpadmin, 'settingsLink'), 10, 2);
 	add_action('admin_head', array($wpadmin, 'removeAdminNotices'), 3);
+
+	add_action('wp_ajax_mg_validate_key', array($wpadmin, 'ajaxValidateKey'));
+	add_action('wp_ajax_mg_initiate_migration', array($wpadmin, 'ajaxInitiateMigration'));
+
 	##POPUP_ON_DEACTIVATION##
 	##ACTIVATEWARNING##
 	add_action('admin_enqueue_scripts', array($wpadmin, 'mgsecAdminMenu'));
@@ -104,16 +109,17 @@ if ($bvinfo->hasValidDBVersion()) {
 	##MAINTENANCEMODULE##
 }
 
-if ((array_key_exists('bvplugname', $_REQUEST)) && ($_REQUEST['bvplugname'] == "migrateguru")) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+if (MGHelper::getRawParam('REQUEST', 'bvplugname') == "migrateguru") {
 	require_once dirname( __FILE__ ) . '/callback/base.php';
 	require_once dirname( __FILE__ ) . '/callback/response.php';
 	require_once dirname( __FILE__ ) . '/callback/request.php';
 	require_once dirname( __FILE__ ) . '/recover.php';
 
-	// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.NonceVerification.Recommended
-	$pubkey = isset($_REQUEST['pubkey']) ? MGAccount::sanitizeKey(wp_unslash($_REQUEST['pubkey'])) : '';
+	$pubkey = MGHelper::getRawParam('REQUEST', 'pubkey');
+	$pubkey = isset($pubkey) ? MGAccount::sanitizeKey($pubkey) : '';
+	$rcvracc = MGHelper::getRawParam('REQUEST', 'rcvracc');
 
-	if (array_key_exists('rcvracc', $_REQUEST)) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	if (isset($rcvracc)) {
 		$account = MGRecover::find($bvsettings, $pubkey);
 	} else {
 		$account = MGAccount::find($bvsettings, $pubkey);
@@ -123,15 +129,10 @@ if ((array_key_exists('bvplugname', $_REQUEST)) && ($_REQUEST['bvplugname'] == "
 	$response = new BVCallbackResponse($request->bvb64cksize);
 
 	if ($request->authenticate() === 1) {
-		if (array_key_exists('bv_ignr_frm_cptch', $_REQUEST)) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			##DISABLE_CAPTCHA_IN_FORM_PLUGINS##
-		}
-
-		if (array_key_exists('bv_ignr_eml', $_REQUEST)) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			##DISABLE_EMAIL_IN_FORM_PLUGINS##
-		}
-
-		if (!array_key_exists('bv_ignr_frm_cptch', $_REQUEST) && !array_key_exists('bv_ignr_eml', $_REQUEST)) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$bv_frm_tstng = MGHelper::getRawParam('REQUEST', 'bv_frm_tstng');
+		if (isset($bv_frm_tstng)) {
+			##FORM_TESTING##
+		} else {
 			##BVBASEPATH##
 
 			require_once dirname( __FILE__ ) . '/callback/handler.php';
@@ -167,3 +168,4 @@ if ((array_key_exists('bvplugname', $_REQUEST)) && ($_REQUEST['bvplugname'] == "
 ##WP2FAMODULE##
 ##WP_LOGIN_WHITELABEL_MODULE##
 ##CLEAR_WP_2FA_CONFIG_ACTION##
+##PLUGIN_LOADED_MODULE##
