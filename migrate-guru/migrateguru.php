@@ -1,11 +1,11 @@
 <?php
 /*
-Plugin Name: Migrate Guru – Site Migration & Cloning
+Plugin Name: Migrate Guru
 Plugin URI: https://www.migrateguru.com
 Description: Migrating your site(s) to any WordPress Hosting platform has never been so easy.
 Author: Migrate Guru
 Author URI: http://www.migrateguru.com
-Version: 6.28
+Version: 6.65
 Network: True
 License: GPLv2 or later
 License URI: [http://www.gnu.org/licenses/gpl-2.0.html](http://www.gnu.org/licenses/gpl-2.0.html)
@@ -73,6 +73,7 @@ if (defined('WP_CLI') && WP_CLI) {
 		WP_CLI::add_command("migrateguru", $wp_cli);
 }
 
+
 if (is_admin()) {
 	require_once dirname( __FILE__ ) . '/wp_admin.php';
 	$wpadmin = new MGWPAdmin($bvsettings, $bvsiteinfo);
@@ -89,13 +90,11 @@ if (is_admin()) {
 	add_action('admin_head', array($wpadmin, 'removeAdminNotices'), 3);
 
 	add_action('wp_ajax_mg_validate_key', array($wpadmin, 'ajaxValidateKey'));
-	add_action('wp_ajax_mg_initiate_migration', array($wpadmin, 'ajaxInitiateMigration'));
+add_action('wp_ajax_mg_initiate_migration', array($wpadmin, 'ajaxInitiateMigration'));
 
 	##POPUP_ON_DEACTIVATION##
 	##ACTIVATEWARNING##
 	add_action('admin_enqueue_scripts', array($wpadmin, 'mgsecAdminMenu'));
-	##ALPURGECACHEFUNCTION##
-	##ALADMINMENU##
 }
 
 if ((array_key_exists('bvreqmerge', $_POST)) || (array_key_exists('bvreqmerge', $_GET))) { // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended
@@ -120,13 +119,15 @@ if (MGHelper::getRawParam('REQUEST', 'bvplugname') == "migrateguru") {
 	$rcvracc = MGHelper::getRawParam('REQUEST', 'rcvracc');
 
 	if (isset($rcvracc)) {
-		$account = MGRecover::find($bvsettings, $pubkey);
+		$bvctag = MGHelper::getRawParam('REQUEST', 'bvctag');
+		$bvctag = isset($bvctag) ? MGAccount::sanitizeKey($bvctag) : null;
+		$account = MGRecover::find($bvsettings, $pubkey, $bvctag);
 	} else {
 		$account = MGAccount::find($bvsettings, $pubkey);
 	}
 
-	$request = new BVCallbackRequest($account, $_REQUEST, $bvsettings); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-	$response = new BVCallbackResponse($request->bvb64cksize);
+	$request = new MGCallbackRequest($account, $_REQUEST, $bvsettings); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$response = new MGCallbackResponse($request->bvb64cksize);
 
 	if ($request->authenticate() === 1) {
 		$bv_frm_tstng = MGHelper::getRawParam('REQUEST', 'bv_frm_tstng');
@@ -142,8 +143,10 @@ if (MGHelper::getRawParam('REQUEST', 'bvplugname') == "migrateguru") {
 				$response->terminate($request->corruptedParamsResp());
 			}
 			$request->params = $params;
-			$callback_handler = new BVCallbackHandler($bvdb, $bvsettings, $bvsiteinfo, $request, $account, $response);
-			if ($request->is_afterload) {
+			$callback_handler = new MGCallbackHandler($bvdb, $bvsettings, $bvsiteinfo, $request, $account, $response);
+			if ($request->is_aftershutdown) {
+				$callback_handler->deferExecutionUntilShutdown();
+			} else if ($request->is_afterload) {
 				add_action('wp_loaded', array($callback_handler, 'execute'));
 			} else if ($request->is_admin_ajax) {
 				add_action('wp_ajax_bvadm', array($callback_handler, 'bvAdmExecuteWithUser'));
@@ -160,7 +163,7 @@ if (MGHelper::getRawParam('REQUEST', 'bvplugname') == "migrateguru") {
 		##PROTECTMODULE##
 		##DYNSYNCMODULE##
 	}
-	##WPAUTOUPDATEBLOCKMODULE##
+	
 	##HIDEPLUGINUPDATEMODULE##
 	##THIRDPARTYCACHINGMODULE##
 }

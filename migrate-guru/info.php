@@ -11,7 +11,7 @@ if (!class_exists('MGInfo')) :
 		public $ip_header_option = 'bvmgipheader';
 		public $brand_option = 'bvmgbrand';
 		public $wp_lp_whitelabel_option = 'mgLpWhitelabelConf';
-		public $version = '6.28';
+		public $version = '6.65';
 		public $webpage = 'https://www.migrateguru.com';
 		public $appurl = 'https://mg.blogvault.net';
 		public $slug = 'migrate-guru/migrateguru.php';
@@ -64,14 +64,15 @@ if (!class_exists('MGInfo')) :
 			$bvsiteinfo = new MGWPSiteInfo();
 			$encoded_url = base64_encode($bvsiteinfo->siteurl());
 			$secret = MGRecover::defaultSecret($this->settings);
+			$tag = MGRecover::connectionTag($this->settings);
 
-			return base64_encode("v2:".$secret.":".$encoded_url.":".$this->plugname);
-		}
+			#No tag means this site has no salt material in wp-config.php, and there
+			#is no connection key that would be safe to hand out.
+			if (empty($secret) || empty($tag)) {
+				return null;
+			}
 
-		public function getDefaultSecret() {
-			require_once dirname( __FILE__ ) . '/recover.php';
-			$bvsiteinfo = new MGWPSiteInfo();
-			return MGRecover::defaultSecret($this->settings);
+			return base64_encode("v3:".$secret.":".$encoded_url.":".$this->plugname.":".$tag);
 		}
 
 		public function getLatestElementorDBVersion($file) {
@@ -86,10 +87,10 @@ if (!class_exists('MGInfo')) :
 		}
 
 		public static function getRequestID() {
-			if (!defined("BV_REQUEST_ID")) {
-				define("BV_REQUEST_ID", uniqid(mt_rand())); // phpcs:ignore WordPress.WP.AlternativeFunctions.rand_mt_rand
+			if (!defined("MG_REQUEST_ID")) {
+				define("MG_REQUEST_ID", uniqid(mt_rand())); // phpcs:ignore WordPress.WP.AlternativeFunctions.rand_mt_rand
 			}
-			return BV_REQUEST_ID;
+			return MG_REQUEST_ID;
 		}
 
 		public function canWhiteLabel($slug = NULL) {

@@ -1,9 +1,9 @@
 <?php
 
 if (!defined('ABSPATH')) exit;
-if (!class_exists('BVInfoCallback')) :
+if (!class_exists('MGInfoCallback')) :
 
-class BVInfoCallback extends BVCallbackBase {
+class MGInfoCallback extends MGCallbackBase {
 	public $db;
 	public $settings;
 	public $siteinfo;

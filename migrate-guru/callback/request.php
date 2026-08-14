@@ -1,12 +1,14 @@
 <?php
 
 if (!defined('ABSPATH')) exit;
-if (!class_exists('BVCallbackRequest')) :
-	class BVCallbackRequest {
+if (!class_exists('MGCallbackRequest')) :
+	class MGCallbackRequest {
 		public $params;
 		public $method;
 		public $wing;
 		public $is_afterload;
+		public $is_aftershutdown;
+		public $keep_page_output;
 		public $is_admin_ajax;
 		public $is_debug;
 		public $account;
@@ -36,6 +38,9 @@ if (!class_exists('BVCallbackRequest')) :
 			$this->wing = $in_params['wing'];
 			$this->method = $in_params['bvMethod'];
 			$this->is_afterload = array_key_exists('afterload', $in_params);
+			$this->is_aftershutdown = array_key_exists('aftershutdown', $in_params);
+			$this->keep_page_output = $this->is_aftershutdown &&
+				array_key_exists('keeppageoutput', $in_params);
 			$this->is_admin_ajax = array_key_exists('adajx', $in_params);
 			$this->is_debug = array_key_exists('bvdbg', $in_params);
 			$this->sig = $in_params['sig'];
@@ -99,6 +104,12 @@ if (!class_exists('BVCallbackRequest')) :
 			if ($this->is_afterload) {
 				$info["afterload"] = true;
 			}
+			if ($this->is_aftershutdown) {
+				$info["aftershutdown"] = true;
+			}
+			if ($this->keep_page_output) {
+				$info["keeppageoutput"] = true;
+			}
 			return $info;
 		}
 
@@ -156,7 +167,7 @@ if (!class_exists('BVCallbackRequest')) :
 
 					if (array_key_exists('sersafe', $in_params)) {
 						$key = $in_params['sersafe'];
-						$in_params[$key] = BVCallbackRequest::serialization_safe_decode($in_params[$key]);
+						$in_params[$key] = MGCallbackRequest::serialization_safe_decode($in_params[$key]);
 					}
 
 					if (array_key_exists('bvprms', $in_params) && isset($in_params['bvprms'])) {
@@ -206,7 +217,7 @@ if (!class_exists('BVCallbackRequest')) :
 
 		public static function serialization_safe_decode($data) {
 			if (is_array($data)) {
-				$data = array_map(array('BVCallbackRequest', 'serialization_safe_decode'), $data);
+				$data = array_map(array('MGCallbackRequest', 'serialization_safe_decode'), $data);
 			} elseif (is_string($data)) {
 				$data = base64_decode($data);
 			}
@@ -285,16 +296,13 @@ if (!class_exists('BVCallbackRequest')) :
 
 		public function authFailedResp() {
 			$api_public_key = MGAccount::getApiPublicKey($this->settings);
-			$default_secret = MGRecover::getDefaultSecret($this->settings);
 			$default_account_pubkey = MGAccount::getDefaultPublicKey();
 			$bvinfo = new MGInfo($this->settings);
 			$resp = array(
 				"request_info" => $this->info(),
 				"bvinfo" => $bvinfo->info(),
 				"statusmsg" => "FAILED_AUTH",
-				"api_pubkey" => substr($api_public_key, 0, 8),
-				"def_key_status" => MGRecover::getSecretStatus($this->settings),
-				"def_sigmatch" => substr(hash('sha1', $this->method.$default_secret.$this->time.$this->version), 0, 8)
+				"api_pubkey" => substr($api_public_key, 0, 8)
 			);
 
 			if (is_string($default_account_pubkey) && strlen($default_account_pubkey) >= 32) {
@@ -303,7 +311,6 @@ if (!class_exists('BVCallbackRequest')) :
 
 			if ($this->account) {
 				$resp["account_info"] = $this->account->info();
-				$resp["sigmatch"] = substr(hash('sha1', $this->method.$this->account->secret.$this->time.$this->version), 0, 6);
 			} else {
 				$resp["account_info"] = array("error" => "ACCOUNT_NOT_FOUND");
 			}

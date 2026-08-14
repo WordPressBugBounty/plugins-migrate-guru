@@ -122,6 +122,7 @@ class MGWPAdmin {
 	public function siteInfoTags() {
 		require_once dirname( __FILE__ ) . '/recover.php';
 		$secret = MGRecover::defaultSecret($this->settings);
+		$ctag = MGRecover::connectionTag($this->settings);
 		$public = MGAccount::getApiPublicKey($this->settings);
 		$server_ip = MGHelper::getStringParamEscaped('SERVER', 'SERVER_ADDR', 'attr');
 		$tags = "<input type='hidden' name='url' value='".esc_attr($this->siteinfo->wpurl())."'/>\n".
@@ -134,6 +135,7 @@ class MGWPAdmin {
 	 			"<input type='hidden' name='serverip' value='".$server_ip."'/>\n".
 				"<input type='hidden' name='abspath' value='".esc_attr(ABSPATH)."'/>\n".
 				"<input type='hidden' name='secret' value='".esc_attr($secret)."'/>\n".
+				"<input type='hidden' name='bvctag' value='".esc_attr($ctag)."'/>\n".
 				"<input type='hidden' name='public' value='".esc_attr($public)."'/>\n";
 		return $tags;
 	}
@@ -208,22 +210,24 @@ class MGWPAdmin {
 		}
 
 		$version = array_shift($parts);
-		if ($version !== 'v2') {
-			return new WP_Error('invalid_key', 'This migration key is from an older plugin version. Install the latest MigrateGuru plugin on both sites and copy the key again.');
+		if ($version !== 'v2' && $version !== 'v3') {
+			return new WP_Error('invalid_key', 'This migration key uses an unsupported version. Install the latest MigrateGuru plugin on both sites and copy the key again.');
 		}
 
 		$payload = implode(':', $parts);
 		$secret = '';
 		$url = '';
 		$plugname = '';
+		$ctag = '';
 
-		$inner = explode(':', $payload, 3);
+		$inner = explode(':', $payload, $version === 'v3' ? 4 : 3);
 		if (count($inner) < 2) {
 			return new WP_Error('invalid_key', 'Migration key appears to be incomplete.');
 		}
 		$secret = $inner[0];
 		$encoded_url = $inner[1];
 		$plugname = isset($inner[2]) ? $inner[2] : '';
+		$ctag = $version === 'v3' && isset($inner[3]) ? $inner[3] : '';
 		$url = base64_decode($encoded_url, true);
 		if ($url === false || $url === '') {
 			return new WP_Error('invalid_key', 'Migration key URL is invalid.');
@@ -237,10 +241,15 @@ class MGWPAdmin {
 			return new WP_Error('invalid_key', 'Migration key URL is invalid.');
 		}
 
+		if ($version === 'v3' && strlen($ctag) < 32) {
+			return new WP_Error('invalid_key', 'Migration key ctag is invalid.');
+		}
+
 		return array(
 			'secret' => $secret,
 			'url' => $url,
-			'plugname' => $plugname
+			'plugname' => $plugname,
+			'ctag' => $ctag
 		);
 	}
 		/**

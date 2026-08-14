@@ -205,7 +205,7 @@
         }
 
         const version = parts.shift();
-        if (version !== 'v2') {
+        if (version !== 'v2' && version !== 'v3') {
             return invalidResponse('This migration key is from an older plugin version. Install the latest MigrateGuru plugin on both sites and copy the key again.');
         }
 
@@ -213,6 +213,7 @@
         let secret;
         let url;
         let plugname = '';
+        let ctag = '';
 
         const decodeUrlOrThrow = (value) => {
             const decodedUrl = decodeBase64(value);
@@ -223,13 +224,18 @@
         };
 
         try {
-            const inner = payload.split(':', 3);
+            const inner = payload.split(':');
             if (inner.length < 2) {
                 return invalidResponse('Migration key appears to be incomplete.');
             }
-            secret = inner[0];
-            url = decodeUrlOrThrow(inner[1]);
-            plugname = inner[2] || '';
+            secret = inner.shift();
+            url = decodeUrlOrThrow(inner.shift());
+            if (version === 'v3') {
+                plugname = inner.shift() || '';
+                ctag = inner.join(':');
+            } else {
+                plugname = inner.join(':');
+            }
         } catch (error) {
             return invalidResponse(error.message);
         }
@@ -247,7 +253,8 @@
             data: {
                 secret,
                 url,
-                plugname
+                plugname,
+                ctag
             }
         };
     }
@@ -838,5 +845,3 @@
     });
 
 })(jQuery);
-
-
