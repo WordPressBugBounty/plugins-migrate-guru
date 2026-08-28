@@ -194,6 +194,10 @@
             message: message || 'Invalid migration key. Please copy it again from your destination site.'
         });
 
+        if (/^[0-9a-zA-Z]{32}$/.test(key)) {
+            return invalidResponse('You have entered an older plugin key. Please re-download the latest plugin and try again.');
+        }
+
         const decoded = decodeBase64(key);
         if (!decoded) {
             return invalidResponse('Migration key is not properly encoded.');
@@ -205,8 +209,11 @@
         }
 
         const version = parts.shift();
-        if (version !== 'v2' && version !== 'v3') {
-            return invalidResponse('This migration key is from an older plugin version. Install the latest MigrateGuru plugin on both sites and copy the key again.');
+        if (version === 'v1' || version === 'v2' || (version.length >= 32 && parts.length > 0)) {
+            return invalidResponse('You have entered an older plugin key. Please re-download the latest plugin and try again.');
+        }
+        if (version !== 'v3') {
+            return invalidResponse('This migration key uses an unsupported version. Install the latest MigrateGuru plugin on both sites and copy the key again.');
         }
 
         const payload = parts.join(':');
@@ -230,12 +237,8 @@
             }
             secret = inner.shift();
             url = decodeUrlOrThrow(inner.shift());
-            if (version === 'v3') {
-                plugname = inner.shift() || '';
-                ctag = inner.join(':');
-            } else {
-                plugname = inner.join(':');
-            }
+            plugname = inner.shift() || '';
+            ctag = inner.join(':');
         } catch (error) {
             return invalidResponse(error.message);
         }
@@ -246,6 +249,10 @@
 
         if (!url) {
             return invalidResponse('Migration key URL is invalid.');
+        }
+
+        if (!/^[0-9a-f]{32}$/.test(ctag)) {
+            return invalidResponse('Migration key ctag is invalid.');
         }
 
         return {

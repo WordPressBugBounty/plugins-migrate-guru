@@ -5,7 +5,7 @@ Plugin URI: https://www.migrateguru.com
 Description: Migrating your site(s) to any WordPress Hosting platform has never been so easy.
 Author: Migrate Guru
 Author URI: http://www.migrateguru.com
-Version: 6.65
+Version: 6.72
 Network: True
 License: GPLv2 or later
 License URI: [http://www.gnu.org/licenses/gpl-2.0.html](http://www.gnu.org/licenses/gpl-2.0.html)

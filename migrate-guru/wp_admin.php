@@ -198,6 +198,9 @@ class MGWPAdmin {
 		if (empty($key)) {
 			return new WP_Error('invalid_key', 'Migration key is required.');
 		}
+		if (preg_match('/\A[0-9a-zA-Z]{32}\z/', $key)) {
+			return new WP_Error('outdated_key', 'You have entered an older plugin key. Please re-download the latest plugin and try again.');
+		}
 
 		$decoded = base64_decode($key, true);
 		if ($decoded === false || $decoded === '') {
@@ -210,7 +213,10 @@ class MGWPAdmin {
 		}
 
 		$version = array_shift($parts);
-		if ($version !== 'v2' && $version !== 'v3') {
+		if ($version === 'v1' || $version === 'v2' || (strlen($version) >= 32 && !empty($parts))) {
+			return new WP_Error('outdated_key', 'You have entered an older plugin key. Please re-download the latest plugin and try again.');
+		}
+		if ($version !== 'v3') {
 			return new WP_Error('invalid_key', 'This migration key uses an unsupported version. Install the latest MigrateGuru plugin on both sites and copy the key again.');
 		}
 
@@ -220,14 +226,14 @@ class MGWPAdmin {
 		$plugname = '';
 		$ctag = '';
 
-		$inner = explode(':', $payload, $version === 'v3' ? 4 : 3);
+		$inner = explode(':', $payload, 4);
 		if (count($inner) < 2) {
 			return new WP_Error('invalid_key', 'Migration key appears to be incomplete.');
 		}
 		$secret = $inner[0];
 		$encoded_url = $inner[1];
 		$plugname = isset($inner[2]) ? $inner[2] : '';
-		$ctag = $version === 'v3' && isset($inner[3]) ? $inner[3] : '';
+		$ctag = isset($inner[3]) ? $inner[3] : '';
 		$url = base64_decode($encoded_url, true);
 		if ($url === false || $url === '') {
 			return new WP_Error('invalid_key', 'Migration key URL is invalid.');
@@ -241,7 +247,7 @@ class MGWPAdmin {
 			return new WP_Error('invalid_key', 'Migration key URL is invalid.');
 		}
 
-		if ($version === 'v3' && strlen($ctag) < 32) {
+		if (!preg_match('/\A[0-9a-f]{32}\z/', $ctag)) {
 			return new WP_Error('invalid_key', 'Migration key ctag is invalid.');
 		}
 

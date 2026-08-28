@@ -11,7 +11,7 @@ if (!class_exists('MGInfo')) :
 		public $ip_header_option = 'bvmgipheader';
 		public $brand_option = 'bvmgbrand';
 		public $wp_lp_whitelabel_option = 'mgLpWhitelabelConf';
-		public $version = '6.65';
+		public $version = '6.72';
 		public $webpage = 'https://www.migrateguru.com';
 		public $appurl = 'https://mg.blogvault.net';
 		public $slug = 'migrate-guru/migrateguru.php';
